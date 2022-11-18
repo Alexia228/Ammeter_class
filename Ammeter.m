@@ -1,4 +1,13 @@
 
+% TODO:
+% 1) Get handle position
+% 2) Transform values
+% 3) Add gain settings
+% 4) Add all CMDs
+% 5) Data2File export
+% 6) 
+% 7) 
+
 classdef Ammeter < handle
     %--------------------------------public--------------------------------
     methods (Access = public)
@@ -11,10 +20,14 @@ classdef Ammeter < handle
             disp(['"' obj.name '" Ammeter created at port: ' obj.COM_port_str]);
         end
         
-        function connect(obj)
+        function connect(obj, varargin)
+            nargin
             if ~obj.Flags.connected
                 obj.Serial_obj = serialport(obj.COM_port_str, 230400);
                 obj.Flags.connected = true;
+                if nargin == 2 && varargin{1} == "reset"
+                    obj.RESET();
+                end
                 disp(['"' obj.name '" connected at port: ' obj.COM_port_str])
             else
                 warning(['"' obj.name '" already connected at port: ' obj.COM_port_str]);
@@ -31,21 +44,23 @@ classdef Ammeter < handle
             end
         end
         
-        function [V_ch1, V_ch2] = read_data(obj)
+        function [V_ch1, V_ch2, isOk] = read_data(obj)
             V_ch1 = [];
             V_ch2 = [];
-%             Data = [];
+            isOk = 0;
             if ~obj.Flags.connected
                 warning([obj.name ' disconnected'])
+                isOk = -1;
             elseif ~obj.Flags.sending
                 warning([obj.name ' is not sending anything'])
+                isOk = -2;
             else
                 [Temp_data, timeout_flag] = get_bytes(obj.Serial_obj);
                 if timeout_flag
                     warning('data recive timeout')
+                    isOk = -3;
                 end
                 [V_ch1, V_ch2] = unpack_raw_bytes(Temp_data);
-                % Data = [V_ch1; V_ch2] - [obj.Analog.bias.ch1; obj.Analog.bias.ch2];
                 V_ch1 = V_ch1 - obj.Analog.bias.ch1;
                 V_ch2 = V_ch2 - obj.Analog.bias.ch2;
             end
@@ -54,20 +69,24 @@ classdef Ammeter < handle
         function sending(obj, flag)
             if obj.Flags.connected
                 flag = logical(flag);
-                write(obj.Serial_obj, uint8([4 0 flag 0 0]), "uint8");
+                obj.send_cmd(uint8([4 0 flag 0 0]));
                 obj.Flags.sending = flag;
             else
                 warning('CMD ignored')
             end
         end
         
-        
         function relay_chV(obj, flag)
             flag = logical(flag);
             obj.Flags.relay_chV = flag;
-            write(obj.Serial_obj, uint8([10 0 flag 0 0]), "uint8");
+            obj.send_cmd(uint8([10 0 flag 0 0]));
         end
         
+        function relay_zerocap(obj, flag)
+            flag = logical(flag);
+            obj.Flags.relay_chV = flag;
+            obj.send_cmd(uint8([3 0 flag 0 0]));
+        end
         
         function varargout = show_flags(obj)
             if nargout == 1
@@ -84,7 +103,6 @@ classdef Ammeter < handle
         end
         
         function delete(obj)
-            
             close(obj);
         end
     end
@@ -107,12 +125,23 @@ classdef Ammeter < handle
     
     methods (Access = private)
         function close(obj)
+            if obj.Flags.sending
+                sending(obj, false);
+            end
             if obj.Flags.connected
                 obj.disconnect();
             end
             disp(['"' obj.name '" Ammeter closed']);
         end
         
+        function send_cmd(obj, CMD)
+            write(obj.Serial_obj, uint8(CMD), "uint8");
+            pause(0.01);
+        end
+        
+        function RESET(obj)
+            send_cmd(obj, uint8([9 0 0 0 0]));
+        end
     end
     
     
