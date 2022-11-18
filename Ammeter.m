@@ -12,9 +12,9 @@ classdef Ammeter < handle
         end
         
         function connect(obj)
-            if ~obj.connected_flag
+            if ~obj.Flags.connected
                 obj.Serial_obj = serialport(obj.COM_port_str, 230400);
-                obj.connected_flag = 1;
+                obj.Flags.connected = true;
                 disp(['"' obj.name '" connected at port: ' obj.COM_port_str])
             else
                 warning(['"' obj.name '" already connected at port: ' obj.COM_port_str]);
@@ -22,9 +22,9 @@ classdef Ammeter < handle
         end
         
         function disconnect(obj)
-            if obj.connected_flag
+            if obj.Flags.connected
                 delete(obj.Serial_obj);
-                obj.connected_flag = 0;
+                obj.Flags.connected = false;
                 disp(['Disconnecting "' obj.name '" at port: ' obj.COM_port_str])
             else
                 warning(['Nothing to disconnect at ' obj.name]);
@@ -35,7 +35,7 @@ classdef Ammeter < handle
             V_ch1 = [];
             V_ch2 = [];
 %             Data = [];
-            if ~obj.connected_flag
+            if ~obj.Flags.connected
                 warning([obj.name ' disconnected'])
             elseif ~obj.Flags.sending
                 warning([obj.name ' is not sending anything'])
@@ -52,7 +52,7 @@ classdef Ammeter < handle
         end
         
         function sending(obj, flag)
-            if obj.connected_flag
+            if obj.Flags.connected
                 flag = logical(flag);
                 write(obj.Serial_obj, uint8([4 0 flag 0 0]), "uint8");
                 obj.Flags.sending = flag;
@@ -62,6 +62,26 @@ classdef Ammeter < handle
         end
         
         
+        function relay_chV(obj, flag)
+            flag = logical(flag);
+            obj.Flags.relay_chV = flag;
+            write(obj.Serial_obj, uint8([10 0 flag 0 0]), "uint8");
+        end
+        
+        
+        function varargout = show_flags(obj)
+            if nargout == 1
+               varargout{1} = obj.Flags;
+            elseif nargout == 0
+               disp(obj.Flags)
+            else
+                warning('wrong number of output arguments')
+            end
+        end
+        
+        function name = get_name(obj)
+            name = obj.name;
+        end
         
         function delete(obj)
             
@@ -75,7 +95,6 @@ classdef Ammeter < handle
         name = '';
         COM_port_str = '';
         Serial_obj = [];
-        connected_flag = 0;
         
         Flags = struct('sending', false, ...
                        'connected', false);
@@ -88,7 +107,7 @@ classdef Ammeter < handle
     
     methods (Access = private)
         function close(obj)
-            if obj.connected_flag
+            if obj.Flags.connected
                 obj.disconnect();
             end
             disp(['"' obj.name '" Ammeter closed']);
