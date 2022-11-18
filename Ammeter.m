@@ -5,7 +5,7 @@
 % 3) Add gain settings
 % 4) Add all CMDs
 % 5) Data2File export
-% 6) 
+% 6) Update Flags
 % 7) 
 
 classdef Ammeter < handle
