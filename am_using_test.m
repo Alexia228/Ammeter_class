@@ -21,8 +21,8 @@ relay_chV(obj, true);
 obj.sending(1);
 pause(0.1);
 obj.relay_zerocap(true);
-% pause(0.1);
-% obj.relay_zerocap(false);
+pause(0.6);
+obj.relay_zerocap(false);
 
 [ch_V, ch_I] =  Ammeter_get_data_frame(obj, 1000);
 
@@ -47,8 +47,8 @@ plot(ch_I, '-b', 'linewidth', 0.8)
 clc
 
 
-% obj = Ammeter("COM3", [], 'bias');
-obj = Ammeter("COM3", []);
+obj = Ammeter("COM3", [], 'bias');
+% obj = Ammeter("COM3", []);
 obj.set_gain(1);
 
 
@@ -67,10 +67,14 @@ try
 stream_ch1 = [];
 stream_ch2 = [];
 
+Flags = obj.show_flags;
+
 timer = tic;
-while toc(timer) < 5
+pause(1)
+while toc(timer) < 5 && Flags.sending
 
 [part_ch_1, part_ch_2, isOk] = obj.read_data();
+
 stream_ch1 = [stream_ch1 part_ch_1];
 stream_ch2 = [stream_ch2 part_ch_2];
 
@@ -80,6 +84,7 @@ plot(stream_ch2, '-b', 'linewidth', 0.8);
 % ylim([-0.01 0.01])
 drawnow
 
+Flags = obj.show_flags;
 end
 
 catch error
@@ -95,7 +100,62 @@ relay_chV(obj, false);
 obj.disconnect();
 
 
+%% get data in real-time
 
+clc
+
+
+obj = Ammeter("COM3", [], 'bias');
+% obj = Ammeter("COM3", []);
+obj.set_gain(1);
+
+
+obj.connect();
+relay_chV(obj, false);
+obj.sending(1);
+obj.relay_zerocap(true);
+% obj.voltage_set(0);
+
+
+
+fig_main = figure;
+hold on
+try
+    
+stream_ch1 = [];
+stream_ch2 = [];
+
+Flags = obj.show_flags;
+
+timer = tic;
+while toc(timer) < 10
+
+[part_ch_1, part_ch_2, isOk] = obj.read_data();
+
+stream_ch1 = [stream_ch1 part_ch_1];
+stream_ch2 = [stream_ch2 part_ch_2];
+
+cla
+plot(stream_ch1, '-r', 'linewidth', 0.8);
+plot(stream_ch2, '-b', 'linewidth', 0.8);
+% ylim([-0.01 0.01])
+ylim([-10 10])
+drawnow
+
+Flags = obj.show_flags;
+end
+
+catch error
+    disp('--------error!--------')
+    disp(error.identifier);
+    disp(error.message);
+    disp('----------------------')
+end
+
+obj.relay_zerocap(false);
+obj.sending(0);
+relay_chV(obj, false);
+obj.disconnect();
 
 %%
 

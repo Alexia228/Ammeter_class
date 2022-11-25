@@ -1,12 +1,12 @@
 
 % TODO:
-% 1) 
-% 2) Transform values
+% 1) Transform values
+% 2) Add all CMDs
 % 3) 
-% 4) Add all CMDs
+% 4) 
 % 5) Data2File export
-% 6) Update Flags
-% 7) cmd(Start measuring) sendinf flsg problem
+% 6) 
+% 7) 
 
 %CMD:
 %  1) get handle pos      - DONE
@@ -60,6 +60,7 @@ classdef Ammeter < handle
         function disconnect(obj)
             if obj.Flags.connected
                 obj.voltage_set(0);
+                obj.relay_zerocap(false);
                 delete(obj.Serial_obj);
                 obj.Flags.connected = false;
                 disp(['Disconnecting "' obj.name '" at port: ' obj.COM_port_str])
@@ -84,9 +85,15 @@ classdef Ammeter < handle
                     warning('data recive timeout')
                     isOk = -3;
                 end
-                [V_ch1, V_ch2] = unpack_raw_bytes(Temp_data);
+                [V_ch1, V_ch2, CMD] = unpack_raw_bytes(Temp_data);
                 V_ch1 = V_ch1 - obj.Analog.bias.ch1;
                 V_ch2 = V_ch2 - obj.Analog.bias.ch2;
+                if CMD.flag
+                    if CMD.high == 2 && CMD.low == 0
+                        disp('Measuring stopped')
+                        obj.Flags.sending = false;
+                    end
+                end
             end
         end
         
@@ -142,6 +149,7 @@ classdef Ammeter < handle
         function start_measuring(obj)
             if obj.Flags.connected
                 obj.send_cmd(uint8([6 0 0 0 0]));
+                obj.Flags.sending = true;
             else
                 warning('CMD ignored')
             end
@@ -328,11 +336,26 @@ end
 
 
 
-function [Value_X, Value_Y] = unpack_raw_bytes(Data_all)
+function [Value_X, Value_Y, CMD] = unpack_raw_bytes(Data_all)
 Bytes_01 = Data_all(1:4:end);
 Bytes_02 = Data_all(2:4:end);
 Bytes_03 = Data_all(3:4:end);
 Bytes_04 = Data_all(4:4:end);
+
+CMD_ind = find((Bytes_01 == 0x80) & (Bytes_02 == 0x00));
+if CMD_ind
+    CMD.flag = true;
+    CMD.high = Bytes_03(CMD_ind);
+    CMD.low = Bytes_04(CMD_ind);
+    Bytes_01(CMD_ind) = [];
+    Bytes_02(CMD_ind) = [];
+    Bytes_03(CMD_ind) = [];
+    Bytes_04(CMD_ind) = [];
+else
+    CMD.flag = false;
+    CMD.high = 0;
+    CMD.low = 0;
+end
 
 Bytes_01(Bytes_01>=128) = Bytes_01(Bytes_01>=128) - 256;
 Bytes_03(Bytes_03>=128) = Bytes_03(Bytes_03>=128) - 256;
@@ -386,7 +409,7 @@ end
 pause(0.2);
 
 %TODO: add zero voltage at outout
-relay_chV(obj, true);
+relay_chV(obj, false);
 obj.relay_zerocap(false);
 
 stream_ch1 = [];
