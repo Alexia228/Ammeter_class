@@ -1,5 +1,0 @@
-	if (Analog_data_1 == 0x8000){
-		Analog_data_1 = 0x8001;
-	}
-	if (Analog_data_2 == 0x8000){
-		Analog_data_2 = 0x8001;
