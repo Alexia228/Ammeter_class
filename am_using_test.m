@@ -1,7 +1,9 @@
 
 
 
-
+warning on all
+warning on backtrace
+warning off verbose
 
 
 
@@ -25,8 +27,6 @@ pause(0.6);
 obj.relay_zerocap(false);
 
 [ch_V, ch_I] =  Ammeter_get_data_frame(obj, 1000);
-
-
 
 obj.sending(0);
 obj.relay_zerocap(false);
@@ -62,7 +62,6 @@ obj.start_measuring();
 
 fig_main = figure;
 hold on
-try
     
 stream_ch1 = [];
 stream_ch2 = [];
@@ -87,12 +86,6 @@ drawnow
 Flags = obj.show_flags;
 end
 
-catch error
-    disp('--------error!--------')
-    disp(error.identifier);
-    disp(error.message);
-    disp('----------------------')
-end
 
 % obj.relay_zerocap(false);
 obj.sending(0);
@@ -117,10 +110,8 @@ obj.relay_zerocap(true);
 % obj.voltage_set(0);
 
 
-
 fig_main = figure;
 hold on
-try
     
 stream_ch1 = [];
 stream_ch2 = [];
@@ -143,13 +134,6 @@ ylim([-10 10])
 drawnow
 
 Flags = obj.show_flags;
-end
-
-catch error
-    disp('--------error!--------')
-    disp(error.identifier);
-    disp(error.message);
-    disp('----------------------')
 end
 
 obj.relay_zerocap(false);
@@ -191,20 +175,44 @@ obj.disconnect();
 
 
 
+%%
+
+
+
+clc
+obj = Ammeter("COM3", 'nyan', 'bias');
+obj.connect();
+
+obj.relay_zerocap(false);
+relay_chV(obj, false);
+
+Volt_array = -10:0.02:10;
+Volt_out = zeros(size(Volt_array));
+for i = 1:numel(Volt_array)
+disp([num2str(i) ' ' num2str(numel(Volt_array))])
+obj.voltage_set(Volt_array(i));
+pause(0.05)
+
+obj.sending(true);
+[ch_V, ~] =  Ammeter_get_data_frame(obj, 120);
+obj.sending(false);
+[~, ~, ~] = obj.read_data('force');
+
+Volt_out(i) = mean(ch_V);
+end
+
+obj.voltage_set(0);
+relay_chV(obj, false);
+obj.disconnect();
 
 
 
 
+%%
 
+Linear_data =  1.001*Volt_array -0.009818;
 
-
-
-
-
-
-
-
-
+plot(Volt_array, Volt_out-Linear_data)
 
 
 

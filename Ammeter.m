@@ -42,6 +42,10 @@ classdef Ammeter < handle
             end
         end
         
+        function delete(obj)
+            close(obj);
+        end
+        
         function connect(obj, varargin)
             if ~obj.Flags.connected
                 obj.Serial_obj = serialport(obj.COM_port_str, 230400);
@@ -69,14 +73,15 @@ classdef Ammeter < handle
             end
         end
         
-        function [V_ch1, V_ch2, isOk] = read_data(obj)
+        function [V_ch1, V_ch2, isOk] = read_data(obj, varargin)
             V_ch1 = [];
             V_ch2 = [];
             isOk = 0;
+            Force = nargin == 2 && varargin{1} == "force";
             if ~obj.Flags.connected
                 warning([obj.name ' disconnected'])
                 isOk = -1;
-            elseif ~obj.Flags.sending
+            elseif ~obj.Flags.sending && ~Force
                 warning([obj.name ' is not sending anything'])
                 isOk = -2;
             else
@@ -97,6 +102,13 @@ classdef Ammeter < handle
             end
         end
         
+        function bias_correction(obj)
+            [ch1_mean, ch2_mean] = Ammeter_bias_measure(obj);
+            obj.Analog.bias.ch1 = obj.Analog.bias.ch1 + ch1_mean;
+            obj.Analog.bias.ch2 = obj.Analog.bias.ch2 + ch2_mean;
+        end
+        
+        %--------------------------------CMD--------------------------------
         function sending(obj, flag)
             if obj.Flags.connected
                 if ~obj.Flags.sending
@@ -109,13 +121,7 @@ classdef Ammeter < handle
                 warning('CMD ignored')
             end
         end
-        
-        function bias_correction(obj)
-            [ch1_mean, ch2_mean] = Ammeter_bias_measure(obj);
-            obj.Analog.bias.ch1 = obj.Analog.bias.ch1 + ch1_mean;
-            obj.Analog.bias.ch2 = obj.Analog.bias.ch2 + ch2_mean;
-        end
-        
+
         function relay_chV(obj, flag)
             if obj.Flags.connected
                 flag = logical(flag);
@@ -178,6 +184,10 @@ classdef Ammeter < handle
             end
         end
         
+        
+        
+        
+        
         function varargout = show_flags(obj)
             if nargout == 1
                 varargout{1} = obj.Flags;
@@ -203,9 +213,7 @@ classdef Ammeter < handle
             name = obj.name;
         end
         
-        function delete(obj)
-            close(obj);
-        end
+
         
         function show_analog(obj)
             if nargout == 1
@@ -433,21 +441,41 @@ obj.disconnect();
 end
 
 
-
-function [byte_high, byte_low] = voltage2bitcode(voltage)
-if voltage < -10
-    voltage = -10;
+function [byte_high, byte_low, bitcode] = voltage2bitcode(voltage)
+high_limit = 10 - 1/2^16;
+low_limit = -10;
+if voltage > high_limit
+    voltage = high_limit;
 end
-if voltage > 10
-    voltage = 10;
+if voltage < low_limit
+    voltage = low_limit;
 end
 
-bitcode = int16(32767*voltage/(10*32767/32768));
+bitcode = int16(floor(32768*voltage/10));
 
-byte_low = int8(bitand(bitcode, int16(0b11111111)));
-byte_high = int8(bitshift(bitcode, -8));
-byte_high = typecast(int8(byte_high), 'uint8');
+
+bit_set_low = bitget(bitcode, 8:-1:1);
+byte_low = uint8(bi2de(flip(bit_set_low)));
+
+bit_set_high = bitget(bitcode, 16:-1:9);
+byte_high = uint8(bi2de(flip(bit_set_high)));
 
 end
+
+% function [byte_high, byte_low] = voltage2bitcode(voltage)
+% if voltage < -10
+%     voltage = -10;
+% end
+% if voltage > 10
+%     voltage = 10;
+% end
+% 
+% bitcode = int16(32767*voltage/(10*32767/32768));
+% 
+% byte_low = int8(bitand(bitcode, int16(0b11111111)));
+% byte_high = int8(bitshift(bitcode, -8));
+% byte_high = typecast(int8(byte_high), 'uint8');
+% 
+% end
 
 
