@@ -310,7 +310,7 @@ function port_name_check(port_name)
 
 Avilable_ports = serialportlist('available');
 
-if ~(sum(Avilable_ports == port_name) == 1)
+if ~(sum(Avilable_ports == port_name) == 1) % Проверка наличия порта в доступных
     Text_ports_list = '';
     for i = 1:numel(Avilable_ports)
         Text_ports_list = [Text_ports_list char(Avilable_ports(i)) newline];
