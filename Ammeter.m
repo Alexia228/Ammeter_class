@@ -47,7 +47,7 @@
 classdef Ammeter < handle
     %--------------------------------PUBLIC--------------------------------
     methods (Access = public)
-        function obj = Ammeter(port_name, varargin)
+        function obj = Ammeter(port_name, varargin) % Конструктор
             narginchk(1, 3);
             if nargin > 1 && ~isempty(varargin{1})
                 name_in = varargin{1};
@@ -65,7 +65,7 @@ classdef Ammeter < handle
             end
         end
         
-        function delete(obj)
+        function delete(obj) % Просто переименоввание операции удаления?
             close(obj);
         end
         
@@ -384,20 +384,21 @@ Value_X = (Bytes_01*256 + Bytes_02)*10/2^15;
 Value_Y = (Bytes_03*256 + Bytes_04)*10/2^15;
 end
 
+%Функция close all очищает все объекты класса Ammetr, которые были созданы начала работы
 function close_all_ammeters()
 input_class_name = 'Ammeter';
-baseVariables = evalin('base' , 'whos');
-Indexes = string({baseVariables.class}) == input_class_name;
-Var_names = string({baseVariables.name});
-Var_names = Var_names(Indexes);
+baseVariables = evalin('base' , 'whos'); % Берёт аргументы из рабочей области и приминяет ко всем функцию whos
+Indexes = string({baseVariables.class}) == input_class_name; % Создали массив из значений поля class, сравнили с Ammeter, получили массив нулей и единиц
+Var_names = string({baseVariables.name}); 
+Var_names = Var_names(Indexes); % Оставили в массиве только имена класса Ammeter
 Valid = zeros(size(Var_names));
-for i = 1:numel(Var_names)
-    Valid(i) = evalin('base', ['isvalid(' char(Var_names(i)) ')']);
+for i = 1 : numel(Var_names)
+    Valid(i) = evalin('base', ['isvalid(' char(Var_names(i)) ')']); % Проверка на существование имён
 end
 Valid = logical(Valid);
-Var_names = Var_names(Valid);
+Var_names = Var_names(Valid);    % Отсеяли только валидные имена
 for i = 1:numel(Var_names)
-    evalin('base', ['delete(' char(Var_names(i)) ')']);
+    evalin('base', ['delete(' char(Var_names(i)) ')']);  %Удалили
 end
 end
 
