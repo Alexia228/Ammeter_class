@@ -28,17 +28,17 @@
 % 15) Create a new waveform
 
 %CMD:
-%  1) get handle pos      - DONE
-%  2) ---
-%  3) set zero relay      - DONE
-%  4) set sending flag    - DONE
-%  5) Set amp and period  - ----UNDONE
-%  6) Start measuring     - DONE
-%  7) Set Output_flag     - ----UNDONE
-%  8) Set DAC value       - DONE
-%  9) RESET               - DONE
-% 10) set V_ch relay      - DONE
-% 11) set_wave_form_gen   - ----UNDONE
+%  1) get handle pos      - DONE           % [1 0 0 0 0]
+%  2) ---                                  % [2 0 0 0 0]
+%  3) set zero relay      - DONE           % [3 0 0 0 0]
+%  4) set sending flag    - DONE           % [4 0 0 0 0]
+%  5) Set amp and period  - ----UNDONE     % [5 0 0 0 0]
+%  6) Start measuring     - DONE           % [6 0 0 0 0]
+%  7) Set Output_flag     - ----UNDONE     % [7 0 0 0 0]
+%  8) Set DAC value       - DONE           % [8 0 0 0 0]
+%  9) RESET               - DONE           % [9 0 0 0 0]
+% 10) set V_ch relay      - DONE           %[10 0 0 0 0]
+% 11) set_wave_form_gen   - ----UNDONE     %[11 0 0 0 0]
 
 % To find all FIXME, TODO, NOTE use:
 % dofixrpt('Ammeter.m','file') -> find notes in file
@@ -50,33 +50,33 @@ classdef Ammeter < handle
         function obj = Ammeter(port_name, varargin) % Конструктор
             narginchk(1, 3);
             if nargin > 1 && ~isempty(varargin{1})
-                name_in = varargin{1};
+                name_in = varargin{1};            % Имя амперметра
             else
-                name_in = 'Yoyo';
+                name_in = 'Yoyo';                 % Имя по дефолту
             end
-            close_all_ammeters();
+            close_all_ammeters();                 % Закрывает всё, что было до этого
             obj.name = char(name_in);
             obj.COM_port_str = char(port_name);
             port_name_check(obj.COM_port_str);
             disp(['"' obj.name '" Ammeter created at port: ' obj.COM_port_str]);
             if nargin > 2 && varargin{2} == "bias"
-                disp(['Input bias correction in "' obj.name '"']);
-                obj.bias_correction();
+                disp(['Input bias correction in "' obj.name '"']); % Коррекция смещения щупов, никуда не подкулючённых
+                obj.bias_correction(); %Получения значениц коррекции на ch1 и ch2
             end
         end
         
-        function delete(obj) % Просто переименоввание операции удаления?
+        function delete(obj) % Пока просто переименование
             close(obj);
         end
         
-        function connect(obj, varargin)
-            narginchk(1, 2)
+        function connect(obj, varargin) % Подключение
+            narginchk(1, 2) % ОБЩЕЕ число аргументов
             if ~obj.Flags.connected
-                obj.Serial_obj = serialport(obj.COM_port_str, 230400);
+                obj.Serial_obj = serialport(obj.COM_port_str, 230400); % Подключение к порту в виде переменной obj.Serial_obj
                 obj.Flags.connected = true;
                 if nargin == 2 && varargin{1} == "reset"
-                    obj.RESET();
-                elseif nargin == 2 && varargin{1} ~= "reset"
+                    obj.RESET(); % Перезапуск амперметра
+                elseif nargin == 2 && varargin{1} ~= "reset" % Либо перезапускаешь, либо не передаёшь количество аргументов больше одного 
                     warning('wrong value of 2nd argument in connection()')
                 end
                 get_handle_position(obj);
@@ -100,7 +100,7 @@ classdef Ammeter < handle
             end
         end
         
-        function [V_ch1, V_ch2, isOk] = read_data(obj, varargin)
+        function [V_ch1, V_ch2, isOk] = read_data(obj, varargin) %Чтение данных с амперметра
             V_ch1 = [];
             V_ch2 = [];
             isOk = 0;
@@ -191,15 +191,17 @@ classdef Ammeter < handle
         function set_amp_and_period(obj, amp, period)
         end
         
-        function [R, C] = get_handle_position(obj)
+        % Получение текущего положения ручки, определяемого R и C(
+        % сопротивление и ёмкость)
+        function [R, C] = get_handle_position(obj) 
             R = -1;
             C = -1;
             if ~obj.Flags.connected
                 warning('Could not get handle position: ammeter disconnected')
             elseif ~obj.Flags.sending
-                serial_flush(obj.Serial_obj);
-                obj.send_cmd(uint8([1 0 0 0 0]));
-                [Data, timeout_flag] = get_bytes(obj.Serial_obj);
+                serial_flush(obj.Serial_obj); %Очисикка буфера
+                obj.send_cmd(uint8([1 0 0 0 0])); %Отправка запроса позиции ручек
+                [Data, timeout_flag] = get_bytes(obj.Serial_obj); %Ожидание ответа
                 if timeout_flag
                     warning('receive timeout (in get_handle_position)')
                 else
@@ -213,7 +215,11 @@ classdef Ammeter < handle
         end
         %----------------------------CMD_END--------------------------------
         
-        %----------------------------Getters--------------------------------
+        
+        %----------------------------Getters--------------------------------%Установка_приватных_полей_класса
+        
+        %varargout - любое количество выходных данных функции
+        %nargout - количество выходных аргументов
         function varargout = show_flags(obj)
             if nargout == 1
                 varargout{1} = obj.Flags;
@@ -284,12 +290,12 @@ classdef Ammeter < handle
         end
         
         function send_cmd(obj, CMD)
-            write(obj.Serial_obj, uint8(CMD), "uint8");
+            write(obj.Serial_obj, uint8(CMD), "uint8"); % Отправляет на порт obj.Serial_obj данные в виде восьмибитного числа [0 - 255] от CMD
             pause(0.01);
         end
         
         function RESET(obj) %RESET CMD
-            send_cmd(obj, uint8([9 0 0 0 0]));
+            send_cmd(obj, uint8([9 0 0 0 0])); % Массив  uint8[9 0 0 0 0] - команда на аппаратном уровне, ПЕРЕЗАПУСКАЮЩАЯ амперметр
             pause(obj.pause_after_reset);
         end
     end
@@ -298,9 +304,9 @@ end
 
 function [R, C] = get_rc(Data)
 Data = Data(4);
-Cind = bitand(Data, 0b1111) + 1;
-Rind = bitshift(Data, -4) + 1;
-R_array = [2e-9, 200e-9, 20e-6, 2e-3, 25e-3, -1]; %Ohm
+Cind = bitand(Data, 0b1111) + 1; % Получение младшего ниббла первого число
+Rind = bitshift(Data, -4) + 1;   % Получение маладшего ниббла второго числа 
+R_array = [2e-9, 200e-9, 20e-6, 2e-3, 25e-3, -1]; %Ohm  %Эти два числа - индекс положения ручек
 C_array = [-1, 10e-12, 100e-12, 1e-9, 100e-9, 10e-6]; %F
 R = R_array(Rind);
 C = C_array(Cind);
@@ -402,7 +408,8 @@ for i = 1:numel(Var_names)
 end
 end
 
-function [ch1_mean, ch2_mean] = Ammeter_bias_measure(obj)
+% Ammeter_bias_measure замеряет сигнал щупов, когда они висят в воздухе
+function [ch1_mean, ch2_mean] = Ammeter_bias_measure(obj)     
 Measuring_period = 1; %s FIXME: do it 'global' value of class
 Flags = obj.show_flags;
 
@@ -431,7 +438,7 @@ end
 obj.sending(false);
 obj.disconnect();
 
-ch1_mean = mean(stream_ch1);
+ch1_mean = mean(stream_ch1);       %Получаем сигнал
 ch2_mean = mean(stream_ch2);
 end
 
