@@ -62,6 +62,11 @@ classdef Ammeter < handle
             end
         end
         
+        function [b1, b2] = get_bias(obj)
+            b1 = obj.Analog.bias.ch1;
+            b2 = obj.Analog.bias.ch2;
+        end
+
         function delete(obj)
             close(obj);
         end
@@ -151,6 +156,22 @@ classdef Ammeter < handle
             
         end
         
+        function Voltage = read_voltage(obj)
+            if obj.Flags.sending
+                warning('Could not read voltage: ammeter is sending data now')
+            else
+                obj.sending(1);
+                pause(0.05);
+                [ch1, ~, ~, ~, status] = obj.read_data_units();
+                obj.sending(0);
+                if status == 0
+                    Voltage = mean(ch1);
+                else
+                    Voltage = NaN;
+                end
+            end
+        end
+
         function bias_correction(obj)
             [ch1_mean, ch2_mean] = Ammeter_bias_measure(obj);
             obj.Analog.bias.ch1 = obj.Analog.bias.ch1 + ch1_mean;
@@ -360,7 +381,7 @@ classdef Ammeter < handle
                        'relay_chV', false, ...
                        'relay_zerocap', false);
         
-        Analog = struct('bias', struct('ch1', -0.0021, 'ch2', -3.8772e-04), ...
+        Analog = struct('bias', struct('ch1', 0, 'ch2', 0), ...
                         'voltage_out', 0, ...
                         'Amplitude', 0, ...
                         'Period', 2, ...
@@ -370,7 +391,7 @@ classdef Ammeter < handle
                         'gain_div', 1, ...
                         'res', -1, ...
                         'cap', -1);
-        
+%         struct('ch1', -0.0021, 'ch2', -3.8772e-04)
     end
     
     methods (Access = private)
@@ -557,7 +578,7 @@ end
 
 function [byte_high, byte_low, period] = period2bitcode(period) %s
 high_limit = 60;
-low_limit = 0.1;
+low_limit = 0.05;
 if period > high_limit
     period = high_limit;
 end
