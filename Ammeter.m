@@ -79,16 +79,16 @@ classdef Ammeter < aDevice
             obj.Flags.connected = false;
         end
 
-        
+
         function [V_ch1, V_ch2, isOk] = read_data(obj)
             V_ch1 = [];
             V_ch2 = [];
             isOk = 0;
             if ~obj.Flags.connected
-                warning(['Ammeter disconnected'])
+                warning('Ammeter disconnected')
                 isOk = -1;
             elseif ~obj.Flags.sending
-                warning(['Ammeter is not sending anything'])
+                warning('Ammeter is not sending anything')
                 isOk = -2;
             else
                 [Temp_data, timeout_flag] = obj.get_bytes();
@@ -166,6 +166,7 @@ classdef Ammeter < aDevice
                 obj.Flags.sending = flag;
                 if ~flag
                     serial_flush(obj.con);
+                    obj.input_array = [];
                 end
             else
                 warning(['CMDsending == ' num2str(flag) ' ignored'])
@@ -411,7 +412,7 @@ classdef Ammeter < aDevice
                 Data(1:Bytes_to_read) = [];
 
                 if ~isempty(Data)
-                    obj.input_array = [obj.input_array Data];
+                    obj.input_array = Data;
                 end
             end
 
