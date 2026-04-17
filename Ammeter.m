@@ -41,7 +41,7 @@
 % dofixrpt('Ammeter.m','file') -> find notes in file
 % dofixrpt(dir) -> find notes in all files in directory 'dir'
 
-classdef Ammeter < handle
+classdef Ammeter < aDevice
     %--------------------------------PUBLIC--------------------------------
     methods (Access = public)
         function obj = Ammeter(port_name, bias_corr)
@@ -50,7 +50,7 @@ classdef Ammeter < handle
                 bias_corr logical = false
             end
 
-            obj.con = Connector_COM_RS232(port_name, 230400);
+            obj@aDevice(Connector_COM_RS232(port_name, 230400));
             obj.Flags.connected = 1;
             disp(['Ammeter created at port: ' port_name]);
 
@@ -65,33 +65,20 @@ classdef Ammeter < handle
             b2 = obj.Analog.bias.ch2;
         end
 
-        function delete(obj)
-            %FIXME: see flags ???
-            if obj.Flags.connected
-                obj.relay_zerocap(false);
-                obj.voltage_set(0);
-                obj.sending(false);
-                obj.relay_chV(false)
-                delete(obj.Serial_obj);
-                obj.Flags.connected = false;
-                disp('Ammeter closed');
-            else
-                warning(['Nothing to disconnect']);
-            end
+
+        function initiate(obj)
+
         end
 
-        % FIXME: Legacy function will be deleted in next update
-        function connect(obj, varargin)
-            narginchk(1, 2)
-            warning(['LEGACY CODE in <Ammeter class>: do not use this ' ...
-                'function! (connect)']);
+        function terminate(obj)
+            obj.relay_zerocap(false);
+            obj.voltage_set(0);
+            obj.sending(false);
+            obj.relay_chV(false)
+            delete(obj.Serial_obj);
+            obj.Flags.connected = false;
         end
-        
-        % FIXME: Legacy function will be deleted in next update
-        function disconnect(obj)
-            warning(['LEGACY CODE in <Ammeter class>: do not use this ' ...
-                'function! (disconnect)']);
-        end
+
         
         function [V_ch1, V_ch2, isOk] = read_data(obj)
             V_ch1 = [];
@@ -359,7 +346,6 @@ classdef Ammeter < handle
     
     %-------------------------------PRIVATE--------------------------------
     properties (Access = private)
-        con Connector = Connector_empty
         input_array uint8 = []
         Serial_obj = [];
         pause_after_reset = 0.5;
