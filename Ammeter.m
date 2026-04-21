@@ -75,7 +75,6 @@ classdef Ammeter < aDevice
             obj.voltage_set(0);
             obj.sending(false);
             obj.relay_chV(false)
-            delete(obj.Serial_obj);
             obj.Flags.connected = false;
         end
 
@@ -166,7 +165,6 @@ classdef Ammeter < aDevice
                 obj.Flags.sending = flag;
                 if ~flag
                     serial_flush(obj.con);
-                    obj.input_array = [];
                 end
             else
                 warning(['CMDsending == ' num2str(flag) ' ignored'])
@@ -347,8 +345,6 @@ classdef Ammeter < aDevice
     
     %-------------------------------PRIVATE--------------------------------
     properties (Access = private)
-        input_array uint8 = []
-        Serial_obj = [];
         pause_after_reset = 0.5;
         
         Wait_data_timeout = 1; %s
@@ -386,7 +382,7 @@ classdef Ammeter < aDevice
             stop = 0;
             Time_start = tic;
             while ~stop
-                Data = uint8(obj.con.read());
+                Data = uint8(obj.con.read(4, "multiple"));
 
                 if numel(Data) > 0
                     stop = 1;
@@ -402,22 +398,9 @@ classdef Ammeter < aDevice
             if timeout_flag == 1
                 Data_out = uint8([]);
             else
-                Data = [obj.input_array Data];
-                obj.input_array = [];
-
-                Bytes_count = numel(Data);
-                Bytes_to_read = floor(Bytes_count/4)*4;
-                
-                Data_out = Data(1:Bytes_to_read);
-                Data(1:Bytes_to_read) = [];
-
-                if ~isempty(Data)
-                    obj.input_array = Data;
-                end
+                Data_out = Data;
             end
-
         end
-
 
     end
 end
@@ -439,8 +422,7 @@ function serial_flush(con)
 arguments
     con Connector
 end
-pause(0.05) %FIXME: why pause?
-con.read();
+con.flush();
 end
 
 function [Value_X, Value_Y, CMD] = unpack_raw_bytes(Data_all)
